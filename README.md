@@ -314,3 +314,28 @@ noisegenerator perlin --mode drift --save --format wav --seconds 60
 
 Library callers can use `GeneratorConfig` and `create_configured_generator`, or
 `audio::{play_audio_with_config, save_to_file_with_config}`. The original APIs remain available.
+
+## Evolving textures and effects
+
+`ocean` and `wind` are procedural textures built from filtered pink noise:
+ocean has overlapping-timescale swells with brighter crests; wind has slow gusts
+and an evolving low-pass cutoff. These are synthesized approximations, not recordings.
+They work with all headphone modes and both export formats.
+
+```bash
+noisegenerator ocean --mode wide --lowpass 4000
+noisegenerator wind --mode drift --highpass 60 --lowpass 2500
+noisegenerator pink --breath-rate 0.08 --breath-depth 0.3
+noisegenerator ocean --save --seconds 300 --fade-in 3 --fade-out 10
+```
+
+Effects (disabled by default):
+
+- `--lowpass HZ` / `--highpass HZ`: second-order Butterworth filters. Cutoffs must be at least 10 Hz, below the actual output sample rate's Nyquist frequency, and highpass must be below lowpass.
+- `--breath-rate 0..1`: envelope frequency in Hz (default `0.1`).
+- `--breath-depth 0..1`: attenuation depth; zero disables breathing, one reaches silence. A zero rate freezes the envelope at full level.
+- `--fade-in SECONDS` / `--fade-out SECONDS`: smooth sine-squared fades. Overlapping fades multiply. Fade-out requires a finite playback duration; saving uses the export duration (60 seconds by default). Ctrl-C still stops playback immediately.
+
+Processing order: sound source → spatial mix → highpass → lowpass → breathing → fades.
+Filter state is independent per ear. Filters can overshoot on transients, so leave gain headroom.
+For library fade-out use `create_configured_generator_for_duration` with a duration matching the output frame count.

@@ -1,7 +1,7 @@
 //! Audio playback functionality.
 
 use crate::generators::{
-    create_configured_generator, Generator, GeneratorConfig, NoiseKind, SpatialMode,
+    create_configured_generator_for_duration, Generator, GeneratorConfig, NoiseKind, SpatialMode,
 };
 use anyhow::Result;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -37,7 +37,7 @@ pub fn play_audio_with_config(settings: &GeneratorConfig, duration: Option<u64>)
 
     // Build the generator state matched to channels & sample rate
     let sample_rate = config.sample_rate().0 as f32;
-    let generator = create_configured_generator(settings, sample_rate)?;
+    let generator = create_configured_generator_for_duration(settings, sample_rate, duration)?;
 
     // Build the stream for the negotiated sample format
     let stream = match config.sample_format() {

@@ -36,6 +36,24 @@ struct Args {
     /// Pan excursion (0..=1).
     #[arg(long, default_value_t = 1.0)]
     motion_depth: f32,
+    /// Low-pass cutoff in Hz (at least 10, below Nyquist).
+    #[arg(long)]
+    lowpass: Option<f32>,
+    /// High-pass cutoff in Hz (at least 10, below Nyquist).
+    #[arg(long)]
+    highpass: Option<f32>,
+    /// Breathing envelope rate in Hz (0..=1).
+    #[arg(long, default_value_t = 0.1)]
+    breath_rate: f32,
+    /// Breathing depth (0 disables, 1 reaches silence).
+    #[arg(long, default_value_t = 0.0)]
+    breath_depth: f32,
+    /// Smooth fade-in duration in seconds.
+    #[arg(long, default_value_t = 0.0)]
+    fade_in: f64,
+    /// Smooth fade-out duration in seconds (requires a timed session).
+    #[arg(long, default_value_t = 0.0)]
+    fade_out: f64,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -49,7 +67,17 @@ fn main() -> anyhow::Result<()> {
     config.spatial.width = args.width;
     config.spatial.motion_rate = args.motion_rate;
     config.spatial.motion_depth = args.motion_depth;
+    config.effects.lowpass = args.lowpass;
+    config.effects.highpass = args.highpass;
+    config.effects.breath_rate = args.breath_rate;
+    config.effects.breath_depth = args.breath_depth;
+    config.effects.fade_in = args.fade_in;
+    config.effects.fade_out = args.fade_out;
     config.validate(48000.0)?;
+    anyhow::ensure!(
+        args.fade_out == 0.0 || args.save || args.seconds.is_some(),
+        "fade-out requires --seconds for playback"
+    );
 
     if args.save {
         // Save mode: generate audio to file
