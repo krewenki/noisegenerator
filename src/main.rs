@@ -1,6 +1,6 @@
 use clap::Parser;
 use noisegenerator::audio::{play_audio_with_config, save_to_file_with_config, OutputFormat};
-use noisegenerator::generators::{GeneratorConfig, NoiseKind, SpatialMode};
+use noisegenerator::generators::{GeneratorConfig, LayerConfig, NoiseKind, SpatialMode};
 
 /// Simple CLI noise generator for macOS (CoreAudio via cpal).
 #[derive(Parser, Debug)]
@@ -54,6 +54,36 @@ struct Args {
     /// Smooth fade-out duration in seconds (requires a timed session).
     #[arg(long, default_value_t = 0.0)]
     fade_out: f64,
+    /// Add a fixed-position layer, KIND:LEVEL:PAN (repeatable, max 16).
+    #[arg(long)]
+    layer: Vec<LayerConfig>,
+    /// Reproduce the same sample sequence (same version/config/sample rate).
+    #[arg(long)]
+    seed: Option<u64>,
+    /// Events per second for velvet, rain, and fire (sound-specific default).
+    #[arg(long)]
+    density: Option<f32>,
+    /// Rain/fire event prominence (0..=1).
+    #[arg(long, default_value_t = 0.5)]
+    event_level: f32,
+    /// Ocean/wind base swell rate in Hz (0..=1).
+    #[arg(long)]
+    texture_rate: Option<f32>,
+    /// Ocean/wind amplitude variation and fan/drone speed variation (0..=1).
+    #[arg(long, default_value_t = 1.0)]
+    variation: f32,
+    /// Fan/drone fundamental frequency in Hz.
+    #[arg(long, default_value_t = 110.0)]
+    tone_hz: f32,
+    /// Fan/drone tonal mix (0..=1).
+    #[arg(long, default_value_t = 0.2)]
+    tone_level: f32,
+    /// Perlin noise-space traversal speed (greater than 0, at most 1000 Hz).
+    #[arg(long, default_value_t = 50.0)]
+    perlin_speed: f32,
+    /// Perlin octave count (1..=10).
+    #[arg(long, default_value_t = 6)]
+    perlin_octaves: usize,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -73,7 +103,16 @@ fn main() -> anyhow::Result<()> {
     config.effects.breath_depth = args.breath_depth;
     config.effects.fade_in = args.fade_in;
     config.effects.fade_out = args.fade_out;
-    config.validate(48000.0)?;
+    config.layers = args.layer;
+    config.seed = args.seed;
+    config.sound.density = args.density;
+    config.sound.event_level = args.event_level;
+    config.sound.texture_rate = args.texture_rate;
+    config.sound.variation = args.variation;
+    config.sound.tone_hz = args.tone_hz;
+    config.sound.tone_level = args.tone_level;
+    config.sound.perlin_speed = args.perlin_speed;
+    config.sound.perlin_octaves = args.perlin_octaves;
     anyhow::ensure!(
         args.fade_out == 0.0 || args.save || args.seconds.is_some(),
         "fade-out requires --seconds for playback"

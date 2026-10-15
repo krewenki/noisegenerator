@@ -1,7 +1,7 @@
 //! Violet noise generator.
 
-use rand::prelude::*;
 use crate::generators::Generator;
+use rand::prelude::*;
 
 /// Violet noise: double differentiation (even more high-frequency emphasis than blue).
 pub struct Violet {
@@ -13,9 +13,13 @@ pub struct Violet {
 
 impl Violet {
     pub fn new(gain: f32, _sample_rate: f32) -> Self {
+        Self::with_rng(gain, _sample_rate, StdRng::from_entropy())
+    }
+
+    pub(crate) fn with_rng(gain: f32, _sample_rate: f32, rng: StdRng) -> Self {
         Self {
             gain,
-            rng: StdRng::from_entropy(),
+            rng,
             prev: 0.0,
             prev2: 0.0,
         }

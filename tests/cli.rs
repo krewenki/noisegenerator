@@ -140,3 +140,84 @@ fn textured_exports_include_effects_and_timed_fades() {
         }
     }
 }
+
+#[test]
+fn layered_event_and_tonal_sounds_export_in_both_formats() {
+    for kind in ["rain", "fire", "fan", "drone"] {
+        for format in ["wav", "mp3"] {
+            let dir = Temp::new();
+            let output = Command::new(env!("CARGO_BIN_EXE_noisegenerator"))
+                .current_dir(&dir.0)
+                .args([
+                    kind,
+                    "--mode",
+                    "trinaural",
+                    "--layer",
+                    "brown:0.5:-0.6",
+                    "--layer",
+                    "velvet:0.1:0.7",
+                    "--seed",
+                    "42",
+                    "--density",
+                    "30",
+                    "--save",
+                    "--seconds",
+                    "1",
+                    "--format",
+                    format,
+                ])
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let path = fs::read_dir(&dir.0)
+                .unwrap()
+                .next()
+                .unwrap()
+                .unwrap()
+                .path();
+            assert!(fs::metadata(&path).unwrap().len() > 1000);
+        }
+    }
+}
+
+#[test]
+fn seeded_wav_samples_are_identical_across_runs() {
+    let mut previous = None;
+    for _ in 0..2 {
+        let dir = Temp::new();
+        let output = Command::new(env!("CARGO_BIN_EXE_noisegenerator"))
+            .current_dir(&dir.0)
+            .args([
+                "rain",
+                "--mode",
+                "drift",
+                "--layer",
+                "drone:0.1:0.5",
+                "--seed",
+                "42",
+                "--save",
+                "--seconds",
+                "1",
+                "--format",
+                "wav",
+            ])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let path = fs::read_dir(&dir.0)
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        let bytes = fs::read(path).unwrap();
+        if let Some(expected) = &previous {
+            assert_eq!(expected, &bytes);
+        }
+        previous = Some(bytes);
+    }
+}

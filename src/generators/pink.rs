@@ -1,7 +1,7 @@
 //! Pink noise generator.
 
-use rand::prelude::*;
 use crate::generators::Generator;
+use rand::prelude::*;
 
 /// Pink noise via Voss-McCartney (6 rows). Cheap and decent.
 pub struct Pink {
@@ -13,9 +13,13 @@ pub struct Pink {
 
 impl Pink {
     pub fn new(gain: f32) -> Self {
+        Self::with_rng(gain, StdRng::from_entropy())
+    }
+
+    pub(crate) fn with_rng(gain: f32, rng: StdRng) -> Self {
         Self {
             gain,
-            rng: StdRng::from_entropy(),
+            rng,
             rows: [0.0; 6],
             counter: 0,
         }

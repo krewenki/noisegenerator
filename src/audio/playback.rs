@@ -16,7 +16,6 @@ pub fn play_audio(kind: NoiseKind, gain: f32, binaural: bool, duration: Option<u
 }
 
 pub fn play_audio_with_config(settings: &GeneratorConfig, duration: Option<u64>) -> Result<()> {
-    settings.validate(48000.0)?;
     // Select default host/device/config
     let host = cpal::default_host();
     let device = host

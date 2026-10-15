@@ -1,7 +1,7 @@
 //! White noise generator.
 
-use rand::prelude::*;
 use crate::generators::Generator;
+use rand::prelude::*;
 
 /// White noise generator using uniform random distribution.
 pub struct White {
@@ -11,10 +11,11 @@ pub struct White {
 
 impl White {
     pub fn new(gain: f32) -> Self {
-        Self {
-            gain,
-            rng: StdRng::from_entropy(),
-        }
+        Self::with_rng(gain, StdRng::from_entropy())
+    }
+
+    pub(crate) fn with_rng(gain: f32, rng: StdRng) -> Self {
+        Self { gain, rng }
     }
 }
 
