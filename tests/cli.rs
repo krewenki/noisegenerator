@@ -89,3 +89,54 @@ fn invalid_options_fail_before_creating_files() {
         assert_eq!(fs::read_dir(&dir.0).unwrap().count(), 0);
     }
 }
+
+#[test]
+fn textured_exports_include_effects_and_timed_fades() {
+    for kind in ["ocean", "wind"] {
+        for format in ["wav", "mp3"] {
+            let dir = Temp::new();
+            let output = Command::new(env!("CARGO_BIN_EXE_noisegenerator"))
+                .current_dir(&dir.0)
+                .args([
+                    kind,
+                    "--mode",
+                    "wide",
+                    "--lowpass",
+                    "3000",
+                    "--highpass",
+                    "50",
+                    "--breath-depth",
+                    "0.3",
+                    "--fade-in",
+                    "0.1",
+                    "--fade-out",
+                    "0.1",
+                    "--save",
+                    "--seconds",
+                    "1",
+                    "--format",
+                    format,
+                ])
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let path = fs::read_dir(&dir.0)
+                .unwrap()
+                .next()
+                .unwrap()
+                .unwrap()
+                .path();
+            if format == "wav" {
+                let mut reader = hound::WavReader::open(path).unwrap();
+                let samples: Vec<_> = reader.samples::<i16>().map(Result::unwrap).collect();
+                assert_eq!(&samples[..2], &[0, 0]);
+                assert_eq!(&samples[samples.len() - 2..], &[0, 0]);
+                assert!(samples.iter().any(|s| *s != 0));
+            }
+        }
+    }
+}

@@ -1,6 +1,8 @@
 //! Audio file export functionality (WAV and MP3).
 
-use crate::generators::{create_configured_generator, GeneratorConfig, NoiseKind, SpatialMode};
+use crate::generators::{
+    create_configured_generator_for_duration, GeneratorConfig, NoiseKind, SpatialMode,
+};
 use anyhow::Result;
 use chrono::Local;
 use clap::ValueEnum;
@@ -70,7 +72,7 @@ fn save_to_wav(config: &GeneratorConfig, duration: u64) -> Result<()> {
     let mut writer = hound::WavWriter::create(&filename, spec)?;
 
     // Create generator
-    let mut generator = create_configured_generator(config, sr)?;
+    let mut generator = create_configured_generator_for_duration(config, sr, Some(duration))?;
 
     // Generate samples
     let total_samples = sample_rate as u64 * duration;
@@ -146,7 +148,7 @@ fn save_to_mp3(config: &GeneratorConfig, duration: u64) -> Result<()> {
     let mut output = std::fs::File::create(&filename)?;
 
     // Create generator
-    let mut generator = create_configured_generator(config, sr)?;
+    let mut generator = create_configured_generator_for_duration(config, sr, Some(duration))?;
 
     // Generate samples in chunks for efficient MP3 encoding
     let total_samples = sample_rate as u64 * duration;
