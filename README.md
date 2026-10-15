@@ -373,3 +373,24 @@ noisegenerator rain --seed 42 --save --format wav --seconds 60
 - `--perlin-speed` sets traversal speed (0..1000, exclusive of zero; default 50); `--perlin-octaves` sets 1..10 layers (default 6).
 - Sound controls apply to matching base and layer sounds. Master `--gain` still controls the entire mix. Effects and fades run after layer mixing.
 - `--seed INTEGER` makes audio samples reproducible for the same version, configuration, and sample rate. Voices and layers receive independent derived streams. Export timestamps/encoded metadata are not part of that contract. Omit it for fresh randomness.
+
+## Experimental headphone depth
+
+`--mode depth` extends the three-source layout with lateral timing and spectral
+cues. The farther ear gets a smoothly interpolated delay (up to 650 microseconds)
+and increasing high-frequency attenuation. Both ears retain some signal even at
+the extreme positions, unlike hard amplitude panning. Added layers use the same
+processing at their fixed pan positions.
+
+```bash
+noisegenerator pink --mode depth --motion-rate 0.04 --motion-depth 0.8
+noisegenerator rain --mode depth --headphone-strength 0.6 --layer brown:0.2:-0.6
+noisegenerator ocean --mode depth --seed 42 --save --seconds 60 --fade-in 2 --fade-out 3
+```
+
+- `--headphone-strength 0..1` controls the delay/head-shadow blend (default 1). Zero removes those cues but retains the depth mode's level-panning law. It does not disable `--motion-depth`.
+- `--motion-rate` and `--motion-depth` control the moving base sources as in trinaural mode. Centered sources have no added timing difference.
+- Buffers are allocated during construction, not per audio frame. Delay scales with the actual sample rate; this mode supports 8–384 kHz.
+- This is an artistic approximation, **not measured HRTF convolution**, head tracking, distance simulation, or reliable front/back positioning. Perceived externalization varies; listening review is needed.
+- Output remains stereo WAV/MP3. Mono downmixing can change the tone because of the delayed signal; this mode is intended for headphones.
+- Existing modes and defaults are unchanged. Filtering, breathing, and fades still follow spatial/layer mixing.
