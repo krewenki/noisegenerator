@@ -1,0 +1,91 @@
+use std::{
+    fs,
+    process::Command,
+    sync::atomic::{AtomicU64, Ordering},
+};
+static NEXT: AtomicU64 = AtomicU64::new(0);
+struct Temp(std::path::PathBuf);
+impl Temp {
+    fn new() -> Self {
+        let path = std::env::temp_dir().join(format!(
+            "noisegenerator-test-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&path).unwrap();
+        Self(path)
+    }
+}
+impl Drop for Temp {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+#[test]
+fn all_spatial_modes_export_wav_and_mp3() {
+    for mode in ["mono", "wide", "binaural", "trinaural", "drift"] {
+        for format in ["wav", "mp3"] {
+            let dir = Temp::new();
+            let output = Command::new(env!("CARGO_BIN_EXE_noisegenerator"))
+                .current_dir(&dir.0)
+                .args([
+                    "pink",
+                    "--mode",
+                    mode,
+                    "--save",
+                    "--seconds",
+                    "1",
+                    "--format",
+                    format,
+                ])
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let path = fs::read_dir(&dir.0)
+                .unwrap()
+                .next()
+                .unwrap()
+                .unwrap()
+                .path();
+            assert!(fs::metadata(&path).unwrap().len() > 1000);
+            if format == "wav" {
+                let mut reader = hound::WavReader::open(path).unwrap();
+                assert_eq!(reader.spec().channels, 2);
+                assert_eq!(reader.spec().sample_rate, 48000);
+                assert_eq!(reader.duration(), 48000);
+                let samples: Vec<_> = reader.samples::<i16>().map(Result::unwrap).collect();
+                assert!(samples.iter().any(|s| *s != 0));
+                if mode == "mono" {
+                    assert!(samples.chunks_exact(2).all(|s| s[0] == s[1]));
+                } else {
+                    assert!(samples.chunks_exact(2).any(|s| s[0] != s[1]));
+                }
+                assert!(samples.iter().all(|s| s.abs() < i16::MAX));
+            }
+        }
+    }
+}
+
+#[test]
+fn invalid_options_fail_before_creating_files() {
+    for args in [
+        vec!["--mode", "wide", "--binaural"],
+        vec!["--width", "2"],
+        vec!["--motion-rate", "NaN"],
+    ] {
+        let dir = Temp::new();
+        let output = Command::new(env!("CARGO_BIN_EXE_noisegenerator"))
+            .current_dir(&dir.0)
+            .args(["--save", "--seconds", "1"])
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        assert_eq!(fs::read_dir(&dir.0).unwrap().count(), 0);
+    }
+}

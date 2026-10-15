@@ -1,6 +1,6 @@
 use clap::Parser;
-use noisegenerator::generators::NoiseKind;
-use noisegenerator::audio::{play_audio, save_to_file, OutputFormat};
+use noisegenerator::audio::{play_audio_with_config, save_to_file_with_config, OutputFormat};
+use noisegenerator::generators::{GeneratorConfig, NoiseKind, SpatialMode};
 
 /// Simple CLI noise generator for macOS (CoreAudio via cpal).
 #[derive(Parser, Debug)]
@@ -24,19 +24,40 @@ struct Args {
     /// Binaural mode: dual generators with slow stereo panning for immersive soundscapes
     #[arg(long)]
     binaural: bool,
+    /// Stereo placement (binaural is panning, not beat tones).
+    #[arg(long, value_enum, conflicts_with = "binaural")]
+    mode: Option<SpatialMode>,
+    /// Independent stereo mix for wide mode (0..=1).
+    #[arg(long, default_value_t = 1.0)]
+    width: f32,
+    /// Pan cycles per second (0..=1; zero freezes movement).
+    #[arg(long, default_value_t = 0.1)]
+    motion_rate: f32,
+    /// Pan excursion (0..=1).
+    #[arg(long, default_value_t = 1.0)]
+    motion_depth: f32,
 }
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    assert!((0.0..=1.0).contains(&args.gain), "gain must be 0..=1");
+    let mut config = GeneratorConfig::new(args.kind, args.gain);
+    config.spatial.mode = args.mode.unwrap_or(if args.binaural {
+        SpatialMode::Binaural
+    } else {
+        SpatialMode::Mono
+    });
+    config.spatial.width = args.width;
+    config.spatial.motion_rate = args.motion_rate;
+    config.spatial.motion_depth = args.motion_depth;
+    config.validate(48000.0)?;
 
     if args.save {
         // Save mode: generate audio to file
         let duration = args.seconds.unwrap_or(60);
-        save_to_file(args.kind, args.gain, args.binaural, duration, args.format)?;
+        save_to_file_with_config(&config, duration, args.format)?;
     } else {
         // Playback mode: stream audio to output device
-        play_audio(args.kind, args.gain, args.binaural, args.seconds)?;
+        play_audio_with_config(&config, args.seconds)?;
     }
     Ok(())
 }

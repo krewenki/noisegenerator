@@ -1,16 +1,22 @@
 //! Audio playback functionality.
 
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use crate::generators::{
+    create_configured_generator, Generator, GeneratorConfig, NoiseKind, SpatialMode,
+};
 use anyhow::Result;
-use crate::generators::{Generator, NoiseKind, create_generator, Binaural};
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
 /// Play audio through the default output device.
-pub fn play_audio(
-    kind: NoiseKind,
-    gain: f32,
-    binaural: bool,
-    duration: Option<u64>,
-) -> Result<()> {
+pub fn play_audio(kind: NoiseKind, gain: f32, binaural: bool, duration: Option<u64>) -> Result<()> {
+    let mut config = GeneratorConfig::new(kind, gain);
+    if binaural {
+        config.spatial.mode = SpatialMode::Binaural;
+    }
+    play_audio_with_config(&config, duration)
+}
+
+pub fn play_audio_with_config(settings: &GeneratorConfig, duration: Option<u64>) -> Result<()> {
+    settings.validate(48000.0)?;
     // Select default host/device/config
     let host = cpal::default_host();
     let device = host
@@ -21,19 +27,17 @@ pub fn play_audio(
         .expect("Failed to get default output config");
 
     eprintln!("→ Device: {}", device.name()?);
-    eprintln!("→ Config: {:?} {}ch @ {} Hz",
-        config.sample_format(), config.channels(), config.sample_rate().0);
-    eprintln!("→ Noise: {:?}, gain: {}", kind, gain);
+    eprintln!(
+        "→ Config: {:?} {}ch @ {} Hz",
+        config.sample_format(),
+        config.channels(),
+        config.sample_rate().0
+    );
+    eprintln!("→ Noise: {:?}, gain: {}", settings.kind, settings.gain);
 
     // Build the generator state matched to channels & sample rate
     let sample_rate = config.sample_rate().0 as f32;
-    let generator: Box<dyn Generator> = if binaural {
-        let gen_a = create_generator(kind, gain, sample_rate);
-        let gen_b = create_generator(kind, gain, sample_rate);
-        Box::new(Binaural::new(gen_a, gen_b, sample_rate))
-    } else {
-        create_generator(kind, gain, sample_rate)
-    };
+    let generator = create_configured_generator(settings, sample_rate)?;
 
     // Build the stream for the negotiated sample format
     let stream = match config.sample_format() {
