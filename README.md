@@ -289,3 +289,28 @@ Warren Krewenki
 - Perlin noise adapted from Ken Perlin's reference implementation
 - MP3 encoding via LAME encoder
 - Audio I/O via cpal library
+
+## Headphone spatial modes
+
+All modes below produce ordinary stereo, compatible with headphones, WAV, and MP3.
+These are spatial noise effects, not binaural-beat tones or HRTF rendering.
+
+```bash
+# Spacious but stationary: independent left and right noise
+noisegenerator pink --mode wide --width 0.8
+# Center bed with two slowly moving sources
+noisegenerator brown --mode trinaural --motion-rate 0.04 --motion-depth 0.7
+# Multi-period wandering instead of a single repeating pendulum
+noisegenerator perlin --mode drift --save --format wav --seconds 60
+```
+
+- `--mode mono|wide|binaural|trinaural|drift` defaults to `mono` (the original sound).
+- `--binaural` remains supported with its original default mix and motion. It conflicts with `--mode`.
+- `--width 0..1` controls wide mode: shared mono at zero, independent channels at one.
+- `--motion-rate 0..1` sets the base movement frequency in Hz (default `0.1`). Zero freezes placement.
+- `--motion-depth 0..1` sets movement extent (default `1`). Zero centers moving sources.
+- Trinaural and drift use conservative fixed mix headroom; they can be quieter than the legacy binaural mix.
+- Mono devices receive a stereo downmix. Additional device channels repeat left/right, as before; these are not surround modes.
+
+Library callers can use `GeneratorConfig` and `create_configured_generator`, or
+`audio::{play_audio_with_config, save_to_file_with_config}`. The original APIs remain available.

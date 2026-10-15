@@ -2,25 +2,25 @@
 
 use clap::ValueEnum;
 
-mod white;
-mod pink;
-mod brown;
-mod blue;
-mod violet;
-mod gray;
-mod velvet;
-mod perlin;
 mod binaural;
+mod blue;
+mod brown;
+mod gray;
+mod perlin;
+mod pink;
+mod velvet;
+mod violet;
+mod white;
 
-pub use white::White;
-pub use pink::Pink;
-pub use brown::Brown;
-pub use blue::Blue;
-pub use violet::Violet;
-pub use gray::Gray;
-pub use velvet::Velvet;
-pub use perlin::Perlin;
 pub use binaural::Binaural;
+pub use blue::Blue;
+pub use brown::Brown;
+pub use gray::Gray;
+pub use perlin::Perlin;
+pub use pink::Pink;
+pub use velvet::Velvet;
+pub use violet::Violet;
+pub use white::White;
 
 /// Trait for all noise generators.
 pub trait Generator: Send {
@@ -44,13 +44,18 @@ pub enum NoiseKind {
 /// Create a generator based on noise kind and parameters.
 pub fn create_generator(kind: NoiseKind, gain: f32, sample_rate: f32) -> Box<dyn Generator> {
     match kind {
-        NoiseKind::White  => Box::new(White::new(gain)),
-        NoiseKind::Pink   => Box::new(Pink::new(gain)),
-        NoiseKind::Brown  => Box::new(Brown::new(gain, sample_rate)),
-        NoiseKind::Blue   => Box::new(Blue::new(gain, sample_rate)),
+        NoiseKind::White => Box::new(White::new(gain)),
+        NoiseKind::Pink => Box::new(Pink::new(gain)),
+        NoiseKind::Brown => Box::new(Brown::new(gain, sample_rate)),
+        NoiseKind::Blue => Box::new(Blue::new(gain, sample_rate)),
         NoiseKind::Violet => Box::new(Violet::new(gain, sample_rate)),
-        NoiseKind::Gray   => Box::new(Gray::new(gain, sample_rate)),
+        NoiseKind::Gray => Box::new(Gray::new(gain, sample_rate)),
         NoiseKind::Velvet => Box::new(Velvet::new(gain, sample_rate)),
         NoiseKind::Perlin => Box::new(Perlin::new(gain, sample_rate)),
     }
 }
+
+mod config;
+mod spatial;
+pub use config::{create_configured_generator, GeneratorConfig};
+pub use spatial::{Spatial, SpatialConfig, SpatialMode};
