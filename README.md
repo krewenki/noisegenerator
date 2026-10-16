@@ -4,8 +4,8 @@ A high-performance Rust CLI application for generating various types of audio no
 
 ## Features
 
-- 🎵 **8 Noise Types**: White, Pink, Brown, Blue, Violet, Gray, Velvet, and Perlin
-- 🎧 **Binaural Mode**: Dual generators with smooth stereo panning for immersive soundscapes
+- 🎵 **14 Sounds**: Eight noise types plus Ocean, Wind, Rain, Fire, Fan, and Drone
+- 🎧 **Headphone Modes**: Wide stereo, binaural panning, three-source movement, and drift
 - 🔊 **Real-time Playback**: Stream directly to your audio device via CoreAudio (macOS)
 - 💾 **File Export**: Save as high-quality MP3 (320kbps) or lossless WAV
 - ⚡ **High Performance**: Generate audio at 23-45x realtime speed
@@ -339,3 +339,58 @@ Effects (disabled by default):
 Processing order: sound source → spatial mix → highpass → lowpass → breathing → fades.
 Filter state is independent per ear. Filters can overshoot on transients, so leave gain headroom.
 For library fade-out use `create_configured_generator_for_duration` with a duration matching the output frame count.
+
+## Layers, event sounds, and reproducible sessions
+
+Four more procedural sounds:
+
+| Sound | Character |
+|---|---|
+| `rain` | Filtered noise bed and short, damped resonant drops |
+| `fire` | Low rumble with irregular, enveloped crackling noise bursts |
+| `fan` | Filtered noise with a quiet motor fundamental and harmonics |
+| `drone` | Filtered noise with slowly detuned sinusoidal layers |
+
+```bash
+# Base pink noise has weight 1; additional layers have relative weights and fixed pans
+noisegenerator pink --mode wide --layer brown:0.5:-0.4 --layer velvet:0.1:0.7
+noisegenerator rain --mode trinaural --density 120 --event-level 0.6
+noisegenerator fire --density 8 --lowpass 4000
+noisegenerator fan --tone-hz 90 --tone-level 0.15 --variation 0.5
+noisegenerator drone --tone-hz 110 --tone-level 0.7
+noisegenerator ocean --texture-rate 0.06 --variation 0.8
+noisegenerator perlin --perlin-speed 35 --perlin-octaves 5
+noisegenerator rain --seed 42 --save --format wav --seconds 60
+```
+
+- Repeat `--layer KIND:LEVEL:PAN` up to 16 times. Level is relative to the base (0..10), pan is -1..1. Base placement uses `--mode`; added layers are fixed-position mono sources with equal-power panning.
+- Mixing divides by `1 + sum(layer levels)` to reserve fixed headroom. This is not perceived-loudness matching or an automatic leveler. A zero-level layer has no audible effect.
+- `--density` sets events/sec for velvet/rain/fire. Defaults: 1000/100/8 respectively. Zero disables events; rain/fire still have a background bed unless `--event-level 1` is set. Rain/fire use a fixed pool of 32 voices and steal voices when saturated, so extreme densities change the texture.
+- `--event-level 0..1` blends rain/fire bed and events (default 0.5).
+- `--texture-rate 0..1` controls ocean/wind swell frequency (Hz); defaults 0.09/0.045. Actual timing also varies slowly. Zero freezes the swell position.
+- `--variation 0..1` controls ocean/wind amplitude variation and fan/drone speed variation (default 1).
+- `--tone-hz` sets fan/drone pitch (default 110); harmonics must remain below Nyquist. `--tone-level 0..1` controls their tonal mix (default 0.2).
+- `--perlin-speed` sets traversal speed (0..1000, exclusive of zero; default 50); `--perlin-octaves` sets 1..10 layers (default 6).
+- Sound controls apply to matching base and layer sounds. Master `--gain` still controls the entire mix. Effects and fades run after layer mixing.
+- `--seed INTEGER` makes audio samples reproducible for the same version, configuration, and sample rate. Voices and layers receive independent derived streams. Export timestamps/encoded metadata are not part of that contract. Omit it for fresh randomness.
+
+## Experimental headphone depth
+
+`--mode depth` extends the three-source layout with lateral timing and spectral
+cues. The farther ear gets a smoothly interpolated delay (up to 650 microseconds)
+and increasing high-frequency attenuation. Both ears retain some signal even at
+the extreme positions, unlike hard amplitude panning. Added layers use the same
+processing at their fixed pan positions.
+
+```bash
+noisegenerator pink --mode depth --motion-rate 0.04 --motion-depth 0.8
+noisegenerator rain --mode depth --headphone-strength 0.6 --layer brown:0.2:-0.6
+noisegenerator ocean --mode depth --seed 42 --save --seconds 60 --fade-in 2 --fade-out 3
+```
+
+- `--headphone-strength 0..1` controls the delay/head-shadow blend (default 1). Zero removes those cues but retains the depth mode's level-panning law. It does not disable `--motion-depth`.
+- `--motion-rate` and `--motion-depth` control the moving base sources as in trinaural mode. Centered sources have no added timing difference.
+- Buffers are allocated during construction, not per audio frame. Delay scales with the actual sample rate; this mode supports 8–384 kHz.
+- This is an artistic approximation, **not measured HRTF convolution**, head tracking, distance simulation, or reliable front/back positioning. Perceived externalization varies; listening review is needed.
+- Output remains stereo WAV/MP3. Mono downmixing can change the tone because of the delayed signal; this mode is intended for headphones.
+- Existing modes and defaults are unchanged. Filtering, breathing, and fades still follow spatial/layer mixing.

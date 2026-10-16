@@ -1,7 +1,7 @@
 //! Brown (Brownian) noise generator.
 
-use rand::prelude::*;
 use crate::generators::Generator;
+use rand::prelude::*;
 
 /// Brown(ian) noise: integrate white with a leaky integrator to avoid drift/clipping.
 pub struct Brown {
@@ -13,10 +13,14 @@ pub struct Brown {
 
 impl Brown {
     pub fn new(gain: f32, _sample_rate: f32) -> Self {
+        Self::with_rng(gain, _sample_rate, StdRng::from_entropy())
+    }
+
+    pub(crate) fn with_rng(gain: f32, _sample_rate: f32, rng: StdRng) -> Self {
         // Fixed leak constant works well for typical 44.1–48 kHz
         Self {
             gain,
-            rng: StdRng::from_entropy(),
+            rng,
             y: 0.0,
             leak: 0.997,
         }

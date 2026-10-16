@@ -41,26 +41,15 @@ pub enum NoiseKind {
     Perlin,
     Ocean,
     Wind,
+    Rain,
+    Fire,
+    Fan,
+    Drone,
 }
 
 /// Create a generator based on noise kind and parameters.
 pub fn create_generator(kind: NoiseKind, gain: f32, sample_rate: f32) -> Box<dyn Generator> {
-    match kind {
-        NoiseKind::Ocean | NoiseKind::Wind => Box::new(textures::Texture::new(
-            kind,
-            gain,
-            sample_rate,
-            Box::new(Pink::new(1.0)),
-        )),
-        NoiseKind::White => Box::new(White::new(gain)),
-        NoiseKind::Pink => Box::new(Pink::new(gain)),
-        NoiseKind::Brown => Box::new(Brown::new(gain, sample_rate)),
-        NoiseKind::Blue => Box::new(Blue::new(gain, sample_rate)),
-        NoiseKind::Violet => Box::new(Violet::new(gain, sample_rate)),
-        NoiseKind::Gray => Box::new(Gray::new(gain, sample_rate)),
-        NoiseKind::Velvet => Box::new(Velvet::new(gain, sample_rate)),
-        NoiseKind::Perlin => Box::new(Perlin::new(gain, sample_rate)),
-    }
+    sounds::source(kind, gain, sample_rate, &SoundConfig::default(), None)
 }
 
 mod config;
@@ -73,3 +62,12 @@ pub use spatial::{Spatial, SpatialConfig, SpatialMode};
 mod effects;
 mod textures;
 pub use effects::{Biquad, EffectsConfig};
+
+mod events;
+mod mixer;
+mod sounds;
+mod tones;
+pub use mixer::LayerConfig;
+pub use sounds::SoundConfig;
+
+mod depth;

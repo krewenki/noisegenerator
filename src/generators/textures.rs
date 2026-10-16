@@ -1,5 +1,5 @@
 //! Procedural noise textures, not field recordings.
-use super::{Generator, NoiseKind};
+use super::{Generator, NoiseKind, SoundConfig};
 
 pub struct Texture {
     source: Box<dyn Generator>,
@@ -11,24 +11,34 @@ pub struct Texture {
     slow_step: f64,
     sr: f32,
     filtered: f32,
+    variation: f32,
 }
 impl Texture {
-    pub fn new(kind: NoiseKind, gain: f32, sample_rate: f32, source: Box<dyn Generator>) -> Self {
-        let rate = if matches!(kind, NoiseKind::Ocean) {
-            0.09
-        } else {
-            0.045
-        };
+    pub fn with_config(
+        kind: NoiseKind,
+        gain: f32,
+        sample_rate: f32,
+        source: Box<dyn Generator>,
+        config: &SoundConfig,
+    ) -> Self {
+        let rate = config
+            .texture_rate
+            .unwrap_or(if matches!(kind, NoiseKind::Ocean) {
+                0.09
+            } else {
+                0.045
+            });
         Self {
             source,
             kind,
             gain,
             phase: 0.0,
             slow_phase: 1.2,
-            step: std::f64::consts::TAU * rate / sample_rate as f64,
+            step: std::f64::consts::TAU * rate as f64 / sample_rate as f64,
             slow_step: std::f64::consts::TAU * 0.017 / sample_rate as f64,
             sr: sample_rate,
             filtered: 0.0,
+            variation: config.variation,
         }
     }
 }
@@ -38,7 +48,7 @@ impl Generator for Texture {
         self.source.next_frame(&mut sample);
         let swell = (0.5 - 0.5 * self.phase.cos()) as f32;
         let slow = (0.5 + 0.5 * self.slow_phase.sin()) as f32;
-        let (envelope, cutoff) = if matches!(self.kind, NoiseKind::Ocean) {
+        let (mut envelope, cutoff) = if matches!(self.kind, NoiseKind::Ocean) {
             let crest = swell * swell;
             (0.15 + 0.85 * crest, 350.0 + 2800.0 * crest)
         } else {
@@ -47,6 +57,7 @@ impl Generator for Texture {
                 180.0 + 1800.0 * swell * slow,
             )
         };
+        envelope = 1.0 - self.variation * (1.0 - envelope);
         let coefficient =
             1.0 - (-std::f32::consts::TAU * cutoff.min(self.sr * 0.4) / self.sr).exp();
         self.filtered += coefficient * (sample[0] - self.filtered);
