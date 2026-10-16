@@ -69,3 +69,5 @@ mod sounds;
 mod tones;
 pub use mixer::LayerConfig;
 pub use sounds::SoundConfig;
+
+mod depth;

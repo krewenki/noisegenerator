@@ -24,7 +24,7 @@ impl Drop for Temp {
 
 #[test]
 fn all_spatial_modes_export_wav_and_mp3() {
-    for mode in ["mono", "wide", "binaural", "trinaural", "drift"] {
+    for mode in ["mono", "wide", "binaural", "trinaural", "drift", "depth"] {
         for format in ["wav", "mp3"] {
             let dir = Temp::new();
             let output = Command::new(env!("CARGO_BIN_EXE_noisegenerator"))
@@ -151,7 +151,7 @@ fn layered_event_and_tonal_sounds_export_in_both_formats() {
                 .args([
                     kind,
                     "--mode",
-                    "trinaural",
+                    "depth",
                     "--layer",
                     "brown:0.5:-0.6",
                     "--layer",

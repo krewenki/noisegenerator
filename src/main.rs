@@ -84,6 +84,9 @@ struct Args {
     /// Perlin octave count (1..=10).
     #[arg(long, default_value_t = 6)]
     perlin_octaves: usize,
+    /// Interaural timing/head-shadow strength for depth mode (0..=1).
+    #[arg(long, default_value_t = 1.0)]
+    headphone_strength: f32,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -95,6 +98,7 @@ fn main() -> anyhow::Result<()> {
         SpatialMode::Mono
     });
     config.spatial.width = args.width;
+    config.spatial.headphone_strength = args.headphone_strength;
     config.spatial.motion_rate = args.motion_rate;
     config.spatial.motion_depth = args.motion_depth;
     config.effects.lowpass = args.lowpass;

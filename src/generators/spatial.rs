@@ -10,6 +10,7 @@ pub enum SpatialMode {
     Binaural,
     Trinaural,
     Drift,
+    Depth,
 }
 
 #[derive(Clone, Debug)]
@@ -21,6 +22,8 @@ pub struct SpatialConfig {
     pub motion_rate: f32,
     /// Pan excursion, from centered (0) to full left/right (1).
     pub motion_depth: f32,
+    /// Timing/head-shadow blend for depth mode (0..=1).
+    pub headphone_strength: f32,
 }
 
 impl Default for SpatialConfig {
@@ -30,6 +33,7 @@ impl Default for SpatialConfig {
             width: 1.0,
             motion_rate: 0.1,
             motion_depth: 1.0,
+            headphone_strength: 1.0,
         }
     }
 }

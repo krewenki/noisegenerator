@@ -53,6 +53,17 @@ impl GeneratorConfig {
             self.spatial.motion_rate.is_finite() && (0.0..=1.0).contains(&self.spatial.motion_rate),
             "motion rate must be 0..=1 Hz"
         );
+        ensure!(
+            self.spatial.headphone_strength.is_finite()
+                && (0.0..=1.0).contains(&self.spatial.headphone_strength),
+            "headphone strength must be 0..=1"
+        );
+        if self.spatial.mode == SpatialMode::Depth {
+            ensure!(
+                (8000.0..=384000.0).contains(&sample_rate),
+                "depth mode supports 8..384 kHz sample rates"
+            );
+        }
         for hz in [self.effects.lowpass, self.effects.highpass]
             .into_iter()
             .flatten()
@@ -185,6 +196,15 @@ pub fn create_configured_generator_for_duration(
             config.spatial.motion_rate,
             config.spatial.motion_depth,
         )),
+        SpatialMode::Depth => Box::new(super::depth::Depth::new(
+            [
+                source(config.kind),
+                source(config.kind),
+                source(config.kind),
+            ],
+            &config.spatial,
+            sample_rate,
+        )),
         _ => Box::new(Spatial::new(
             [
                 source(config.kind),
@@ -201,7 +221,16 @@ pub fn create_configured_generator_for_duration(
             .iter()
             .map(|layer| (source(layer.kind), layer.clone()))
             .collect();
-        generator = Box::new(Mixer::new(generator, layers));
+        generator = Box::new(if config.spatial.mode == SpatialMode::Depth {
+            Mixer::with_depth(
+                generator,
+                layers,
+                sample_rate,
+                config.spatial.headphone_strength,
+            )
+        } else {
+            Mixer::new(generator, layers)
+        });
     }
     if config.effects.lowpass.is_some()
         || config.effects.highpass.is_some()
